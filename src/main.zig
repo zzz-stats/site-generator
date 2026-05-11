@@ -16,8 +16,8 @@ pub fn getYoutubeVideoInfo(client: *std.http.Client, gpa: std.mem.Allocator, key
     const endpoint = "videos";
     const part = "snippet%2CcontentDetails%2Cstatistics";
 
-    const authorization_header = try std.fmt.allocPrint(arena, "Bearer {}", .{key});
-    const url = try std.fmt.allocPrint(arena, "{}/{}?part={}&id={}&key={}", .{ base, endpoint, part, id, key });
+    const authorization_header = try std.fmt.allocPrint(arena, "Bearer {s}", .{key});
+    const url = try std.fmt.allocPrint(arena, "{s}/{s}?part={s}&id={s}&key={s}", .{ base, endpoint, part, id, key });
 
     var response_writer = std.Io.Writer.Allocating.init(gpa);
     defer response_writer.deinit();

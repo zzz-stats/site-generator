@@ -2,10 +2,15 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const spaghet = b.dependency("spaghet", .{});
+
     const mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{ .name = "spaghet", .module = spaghet.module("spaghet") },
+        },
     });
 
     const exe = b.addExecutable(.{
