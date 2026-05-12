@@ -5,36 +5,18 @@ pub fn main(init: std.process.Init) !void {
     };
     defer client.deinit();
 
-    try getYoutubeVideoInfo(&client, init.gpa, "KEY", "VIDEO_ID");
-}
-
-pub fn getYoutubeVideoInfo(client: *std.http.Client, gpa: std.mem.Allocator, key: []const u8, id: []const u8) !void {
-    var arena_allocator = std.heap.ArenaAllocator.init(gpa);
-    const arena = arena_allocator.allocator();
-    defer arena_allocator.deinit();
-    const base = "https://youtube.googleapis.com/youtube/v3";
-    const endpoint = "videos";
-    const part = "snippet%2CcontentDetails%2Cstatistics";
-
-    const authorization_header = try std.fmt.allocPrint(arena, "Bearer {s}", .{key});
-    const url = try std.fmt.allocPrint(arena, "{s}/{s}?part={s}&id={s}&key={s}", .{ base, endpoint, part, id, key });
-
-    var response_writer = std.Io.Writer.Allocating.init(gpa);
-    defer response_writer.deinit();
-
-    const result = try client.fetch(.{
-        .method = .GET,
-        .location = .{ .url = url },
-        .headers = .{
-            .authorization = .{ .override = authorization_header },
-            .accept_encoding = .{ .override = "application/json" },
-        },
+    const key = init.environ_map.get("ZZZ_STATS_YOUTUBE_API_KEY") orelse return error.MissingKey;
+    const stats = try youtube.fetchVideoStatistics(&client, init.gpa, key, "C5WS9Ohb-fI");
+    std.debug.print("Views: {d}\nLikes: {d}\nComments: {d}\n", .{
+        stats.views,
+        stats.likes,
+        stats.comments,
     });
-    _ = result;
 }
 
 test main {
     _ = &main;
 }
 
+const youtube = @import("youtube.zig");
 const std = @import("std");
