@@ -6,7 +6,7 @@ pub fn main(init: std.process.Init) !void {
     defer client.deinit();
 
     const key = init.environ_map.get("ZZZ_STATS_YOUTUBE_API_KEY") orelse return error.MissingKey;
-    const stats = try youtube.fetchVideoStatistics(&client, init.gpa, key, "C5WS9Ohb-fI");
+    const stats = try youtube.fetchVideoStatistics(&client, init.gpa, key, "GELf8KgbL3Y");
     std.debug.print("Views: {d}\nLikes: {d}\nComments: {d}\n", .{
         stats.views,
         stats.likes,
