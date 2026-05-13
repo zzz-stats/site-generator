@@ -169,9 +169,29 @@ test testReadAndWriteSame {
     );
 }
 
+pub const FetchStatsArguments = struct {
+    io: std.Io,
+    gpa: std.mem.Allocator,
+    client: *std.http.Client,
+    youtube_api_key: []const u8,
+};
+
+pub fn fetchStats(agent: *Agent, args: FetchStatsArguments) !void {
+    try agent.fetchYoutubeStats(args);
+}
+
+pub fn fetchYoutubeStats(agent: *Agent, args: FetchStatsArguments) !void {
+    const youtube_fields = @typeInfo(Info.Videos.YouTube).@"struct".fields;
+    const youtube_info = &argent.info.videos.youtube;
+    const youtube_stats = &argent.stats.videos.youtube;
+
+    var futures: [youtube_fields.len]std.Thread.Future(!void) = undefined;
+}
+
 const Agent = @This();
 
 pub const Info = @import("Agent/Info.zig");
 pub const Stats = @import("Agent/Stats.zig");
 
+const youtube = @import("youtube.zig");
 const std = @import("std");

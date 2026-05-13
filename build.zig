@@ -22,10 +22,11 @@ pub fn build(b: *std.Build) void {
     const run_test = b.addRunArtifact(tests);
     b.default_step.dependOn(&run_test.step);
 
+    const run = b.step("run", "");
     const run_exe_step = b.addRunArtifact(exe);
     run_exe_step.addArgs(b.args orelse &.{});
     run_exe_step.stdio = .inherit;
-    b.default_step.dependOn(&run_exe_step.step);
+    run.dependOn(&run_exe_step.step);
 
     const install_exe = b.addInstallArtifact(exe, .{});
     run_exe_step.step.dependOn(&install_exe.step);
