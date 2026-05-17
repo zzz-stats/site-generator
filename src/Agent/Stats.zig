@@ -13,7 +13,7 @@ pub fn hasData(stats: Stats) bool {
     return stats.videos.hasData();
 }
 
-const Videos = struct {
+pub const Videos = struct {
     youtube: Youtube = .{},
 
     pub fn jsonStringify(videos: Videos, stringify: *std.json.Stringify) !void {

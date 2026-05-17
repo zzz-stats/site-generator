@@ -34,13 +34,13 @@ pub fn readFromString(gpa: std.mem.Allocator, str: []const u8) !Agent {
 
 pub fn write(agent: Agent, io: std.Io, dir: std.Io.Dir) !void {
     var filename_buf: [std.Io.Dir.max_name_bytes]u8 = undefined;
-    const filename = std.fmt.bufPrint(&filename_buf, "{}.json", .{agent.info.id});
+    const filename = try std.fmt.bufPrint(&filename_buf, "{s}.json", .{agent.info.id});
 
-    const file = try dir.createFileAtomic(io, filename, .{ .replace = true });
-    defer file.deinit();
+    var file = try dir.createFileAtomic(io, filename, .{ .replace = true });
+    defer file.deinit(io);
 
     try agent.writeToFile(io, file.file);
-    try file.replace();
+    try file.replace(io);
 }
 
 pub fn writeToFile(agent: Agent, io: std.Io, file: std.Io.File) !void {
@@ -169,23 +169,98 @@ test testReadAndWriteSame {
     );
 }
 
-pub const FetchStatsArguments = struct {
+pub const FetchArgs = struct {
     io: std.Io,
     gpa: std.mem.Allocator,
     client: *std.http.Client,
+    date: Stats.Date,
     youtube_api_key: []const u8,
 };
 
-pub fn fetchStats(agent: *Agent, args: FetchStatsArguments) !void {
-    try agent.fetchYoutubeStats(args);
+pub fn readFetchAndWriteEntireDirectory(dir: std.Io.Dir, args: FetchArgs) !void {
+    var arena_allocator = std.heap.ArenaAllocator.init(args.gpa);
+    const arena = arena_allocator.allocator();
+    defer arena_allocator.deinit();
+
+    const Result = @typeInfo(@TypeOf(readFetchAndWrite)).@"fn".return_type.?;
+    var agents = std.ArrayList(struct { filename: []const u8, result: Result }).empty;
+    defer agents.deinit(args.gpa);
+
+    var it = dir.iterate();
+    while (try it.next(args.io)) |entry| {
+        if (entry.kind != .file) continue;
+        if (!std.mem.endsWith(u8, entry.name, ".json")) continue;
+        try agents.append(args.gpa, .{
+            .filename = try arena.dupe(u8, entry.name),
+            .result = undefined,
+        });
+    }
+
+    const func = struct {
+        fn func(res: *Result, d: std.Io.Dir, f: []const u8, a: FetchArgs) void {
+            res.* = readFetchAndWrite(d, f, a);
+        }
+    }.func;
+
+    var group = std.Io.Group.init;
+    for (agents.items) |*agent|
+        try group.concurrent(args.io, func, .{ &agent.result, dir, agent.filename, args });
+    try group.await(args.io);
+
+    for (agents.items) |agent|
+        try agent.result;
 }
 
-pub fn fetchYoutubeStats(agent: *Agent, args: FetchStatsArguments) !void {
-    const youtube_fields = @typeInfo(Info.Videos.YouTube).@"struct".fields;
-    const youtube_info = &argent.info.videos.youtube;
-    const youtube_stats = &argent.stats.videos.youtube;
+pub fn readFetchAndWrite(dir: std.Io.Dir, filename: []const u8, args: FetchArgs) !void {
+    var agent = try Agent.read(args.io, args.gpa, dir, filename);
+    defer agent.deinit();
 
-    var futures: [youtube_fields.len]std.Thread.Future(!void) = undefined;
+    try agent.fetch(args);
+    try agent.write(args.io, dir);
+}
+
+pub fn fetch(agent: *Agent, args: FetchArgs) !void {
+    try agent.fetchYoutube(args);
+}
+
+pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
+    const youtube_fields = @typeInfo(Info.Videos.Youtube).@"struct".fields;
+    const youtube_info = &agent.info.videos.youtube;
+    const youtube_stats = &agent.stats.videos.youtube;
+
+    const Result = @typeInfo(@TypeOf(fetchYoutubeVideo)).@"fn".return_type.?;
+    const func = struct {
+        fn func(res: *Result, a: *Agent, id: []const u8, l: *Stats.Videos.Youtube.List, ar: FetchArgs) void {
+            res.* = a.fetchYoutubeVideo(id, l, ar);
+        }
+    }.func;
+
+    var results: [youtube_fields.len]Result = undefined;
+    var group = std.Io.Group.init;
+
+    inline for (youtube_fields, &results) |field, *res| continue_blk: {
+        const video_id = @field(youtube_info, field.name) orelse {
+            res.* = {};
+            break :continue_blk;
+        };
+        const list = &@field(youtube_stats, field.name);
+        try group.concurrent(args.io, func, .{ res, agent, video_id, list, args });
+    }
+
+    try group.await(args.io);
+
+    for (results) |res|
+        try res;
+}
+
+fn fetchYoutubeVideo(agent: *Agent, video_id: []const u8, list: *Stats.Videos.Youtube.List, args: FetchArgs) !void {
+    const stats = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_id);
+    try list.items.append(agent.arena.allocator(), .{
+        .date = args.date,
+        .views = stats.views,
+        .likes = stats.likes,
+        .comments = stats.comments,
+    });
 }
 
 const Agent = @This();
