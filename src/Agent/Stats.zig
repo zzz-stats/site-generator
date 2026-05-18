@@ -1,129 +1,112 @@
-videos: Videos = .{},
+youtube: Youtube = .{},
 
 pub fn jsonStringify(stats: Stats, stringify: *std.json.Stringify) !void {
     const Json = struct {
-        videos: ?Videos,
+        youtube: ?Youtube,
     };
     return stringify.write(Json{
-        .videos = if (stats.videos.hasData()) stats.videos else null,
+        .youtube = if (stats.youtube.hasData()) stats.youtube else null,
     });
 }
 
 pub fn hasData(stats: Stats) bool {
-    return stats.videos.hasData();
+    return stats.youtube.hasData();
 }
 
-pub const Videos = struct {
-    youtube: Youtube = .{},
+pub const Youtube = struct {
+    ep: List = .{},
+    demo: List = .{},
+    record: List = .{},
+    teaser: List = .{},
+    for_display_only: List = .{},
+    exclusive_channel: List = .{},
 
-    pub fn jsonStringify(videos: Videos, stringify: *std.json.Stringify) !void {
+    pub fn deinit(youtube: *Youtube, gpa: std.mem.Allocator) void {
+        youtube.ep.items.deinit(gpa);
+        youtube.demo.items.deinit(gpa);
+        youtube.record.items.deinit(gpa);
+        youtube.for_display_only.items.deinit(gpa);
+        youtube.exclusive_channel.items.deinit(gpa);
+    }
+
+    pub fn hasData(youtube: Youtube) bool {
+        return youtube.ep.items.len > 0 or
+            youtube.demo.items.len > 0 or
+            youtube.record.items.len > 0 or
+            youtube.teaser.items.len > 0 or
+            youtube.for_display_only.items.len > 0 or
+            youtube.exclusive_channel.items.len > 0;
+    }
+
+    pub fn jsonStringify(youtube: Youtube, stringify: *std.json.Stringify) !void {
         const Json = struct {
-            youtube: ?Youtube,
+            ep: ?List,
+            demo: ?List,
+            record: ?List,
+            teaser: ?List,
+            for_display_only: ?List,
+            exclusive_channel: ?List,
         };
         return stringify.write(Json{
-            .youtube = if (videos.youtube.hasData()) videos.youtube else null,
+            .ep = if (youtube.ep.items.len > 0) youtube.ep else null,
+            .demo = if (youtube.demo.items.len > 0) youtube.demo else null,
+            .record = if (youtube.record.items.len > 0) youtube.record else null,
+            .teaser = if (youtube.teaser.items.len > 0) youtube.teaser else null,
+            .for_display_only = if (youtube.for_display_only.items.len > 0) youtube.for_display_only else null,
+            .exclusive_channel = if (youtube.exclusive_channel.items.len > 0) youtube.exclusive_channel else null,
         });
     }
 
-    pub fn hasData(videos: Videos) bool {
-        return videos.youtube.hasData();
-    }
+    pub const Video = struct {
+        date: Date,
+        views: u64,
+        likes: u64,
+        comments: u64,
+    };
 
-    pub const Youtube = struct {
-        ep: List = .{},
-        demo: List = .{},
-        record: List = .{},
-        teaser: List = .{},
-        for_display_only: List = .{},
-        exclusive_channel: List = .{},
+    pub const List = struct {
+        items: std.MultiArrayList(Video) = .empty,
 
-        pub fn deinit(youtube: *Youtube, gpa: std.mem.Allocator) void {
-            youtube.ep.items.deinit(gpa);
-            youtube.demo.items.deinit(gpa);
-            youtube.record.items.deinit(gpa);
-            youtube.for_display_only.items.deinit(gpa);
-            youtube.exclusive_channel.items.deinit(gpa);
-        }
-
-        pub fn hasData(youtube: Youtube) bool {
-            return youtube.ep.items.len > 0 or
-                youtube.demo.items.len > 0 or
-                youtube.record.items.len > 0 or
-                youtube.teaser.items.len > 0 or
-                youtube.for_display_only.items.len > 0 or
-                youtube.exclusive_channel.items.len > 0;
-        }
-
-        pub fn jsonStringify(youtube: Youtube, stringify: *std.json.Stringify) !void {
+        pub fn jsonStringify(list: List, stringify: *std.json.Stringify) !void {
             const Json = struct {
-                ep: ?List,
-                demo: ?List,
-                record: ?List,
-                teaser: ?List,
-                for_display_only: ?List,
-                exclusive_channel: ?List,
+                date: []const Date,
+                views: []const u64,
+                likes: []const u64,
+                comments: []const u64,
             };
             return stringify.write(Json{
-                .ep = if (youtube.ep.items.len > 0) youtube.ep else null,
-                .demo = if (youtube.demo.items.len > 0) youtube.demo else null,
-                .record = if (youtube.record.items.len > 0) youtube.record else null,
-                .teaser = if (youtube.teaser.items.len > 0) youtube.teaser else null,
-                .for_display_only = if (youtube.for_display_only.items.len > 0) youtube.for_display_only else null,
-                .exclusive_channel = if (youtube.exclusive_channel.items.len > 0) youtube.exclusive_channel else null,
+                .date = list.items.items(.date),
+                .views = list.items.items(.views),
+                .likes = list.items.items(.likes),
+                .comments = list.items.items(.comments),
             });
         }
 
-        pub const Video = struct {
-            date: Date,
-            views: u64,
-            likes: u64,
-            comments: u64,
-        };
+        pub fn jsonParse(
+            allocator: std.mem.Allocator,
+            source: anytype,
+            options: std.json.ParseOptions,
+        ) std.json.ParseError(@TypeOf(source.*))!List {
+            const Json = struct {
+                date: []const Date,
+                views: []const u64,
+                likes: []const u64,
+                comments: []const u64,
+            };
+            const json = try std.json.innerParse(Json, allocator, source, options);
 
-        pub const List = struct {
-            items: std.MultiArrayList(Video) = .empty,
+            var res = List{};
+            errdefer res.items.deinit(allocator);
 
-            pub fn jsonStringify(list: List, stringify: *std.json.Stringify) !void {
-                const Json = struct {
-                    date: []const Date,
-                    views: []const u64,
-                    likes: []const u64,
-                    comments: []const u64,
-                };
-                return stringify.write(Json{
-                    .date = list.items.items(.date),
-                    .views = list.items.items(.views),
-                    .likes = list.items.items(.likes),
-                    .comments = list.items.items(.comments),
-                });
-            }
+            const len = @min(json.date.len, json.views.len, json.likes.len, json.comments.len);
+            try res.items.resize(allocator, len);
+            @memcpy(res.items.items(.date), json.date[0..len]);
+            @memcpy(res.items.items(.views), json.views[0..len]);
+            @memcpy(res.items.items(.likes), json.likes[0..len]);
+            @memcpy(res.items.items(.comments), json.comments[0..len]);
 
-            pub fn jsonParse(
-                allocator: std.mem.Allocator,
-                source: anytype,
-                options: std.json.ParseOptions,
-            ) std.json.ParseError(@TypeOf(source.*))!List {
-                const Json = struct {
-                    date: []const Date,
-                    views: []const u64,
-                    likes: []const u64,
-                    comments: []const u64,
-                };
-                const json = try std.json.innerParse(Json, allocator, source, options);
-
-                var res = List{};
-                errdefer res.items.deinit(allocator);
-
-                const len = @min(json.date.len, json.views.len, json.likes.len, json.comments.len);
-                try res.items.resize(allocator, len);
-                @memcpy(res.items.items(.date), json.date[0..len]);
-                @memcpy(res.items.items(.views), json.views[0..len]);
-                @memcpy(res.items.items(.likes), json.likes[0..len]);
-                @memcpy(res.items.items(.comments), json.comments[0..len]);
-
-                return res;
-            }
-        };
+            return res;
+        }
     };
 };
 

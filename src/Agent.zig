@@ -97,8 +97,17 @@ test testReadAndWriteSame {
         \\  "info": {
         \\    "id": "test-agent",
         \\    "name": "Test Agent",
-        \\    "videos": {
-        \\      "youtube": {}
+        \\    "youtube": {}
+        \\  }
+        \\}
+    );
+    try testReadAndWriteSame(
+        \\{
+        \\  "info": {
+        \\    "id": "test-agent",
+        \\    "name": "Test Agent",
+        \\    "youtube": {
+        \\      "ep": "aaaaaaaaaaa"
         \\    }
         \\  }
         \\}
@@ -108,10 +117,13 @@ test testReadAndWriteSame {
         \\  "info": {
         \\    "id": "test-agent",
         \\    "name": "Test Agent",
-        \\    "videos": {
-        \\      "youtube": {
-        \\        "ep": "aaaaaaaaaaa"
-        \\      }
+        \\    "youtube": {
+        \\      "ep": "aaaaaaaaaaa",
+        \\      "demo": "aaaaaaaaaaa",
+        \\      "record": "aaaaaaaaaaa",
+        \\      "teaser": "aaaaaaaaaaa",
+        \\      "for_display_only": "aaaaaaaaaaa",
+        \\      "exclusive_channel": "aaaaaaaaaaa"
         \\    }
         \\  }
         \\}
@@ -121,47 +133,25 @@ test testReadAndWriteSame {
         \\  "info": {
         \\    "id": "test-agent",
         \\    "name": "Test Agent",
-        \\    "videos": {
-        \\      "youtube": {
-        \\        "ep": "aaaaaaaaaaa",
-        \\        "demo": "aaaaaaaaaaa",
-        \\        "record": "aaaaaaaaaaa",
-        \\        "teaser": "aaaaaaaaaaa",
-        \\        "for_display_only": "aaaaaaaaaaa",
-        \\        "exclusive_channel": "aaaaaaaaaaa"
-        \\      }
-        \\    }
-        \\  }
-        \\}
-    );
-    try testReadAndWriteSame(
-        \\{
-        \\  "info": {
-        \\    "id": "test-agent",
-        \\    "name": "Test Agent",
-        \\    "videos": {
-        \\      "youtube": {
-        \\        "ep": "aaaaaaaaaaa"
-        \\      }
+        \\    "youtube": {
+        \\      "ep": "aaaaaaaaaaa"
         \\    }
         \\  },
         \\  "stats": {
-        \\    "videos": {
-        \\      "youtube": {
-        \\        "ep": {
-        \\          "date": [
-        \\            "2024-01-01T00:00:00Z"
-        \\          ],
-        \\          "views": [
-        \\            123
-        \\          ],
-        \\          "likes": [
-        \\            456
-        \\          ],
-        \\          "comments": [
-        \\            789
-        \\          ]
-        \\        }
+        \\    "youtube": {
+        \\      "ep": {
+        \\        "date": [
+        \\          "2024-01-01T00:00:00Z"
+        \\        ],
+        \\        "views": [
+        \\          123
+        \\        ],
+        \\        "likes": [
+        \\          456
+        \\        ],
+        \\        "comments": [
+        \\          789
+        \\        ]
         \\      }
         \\    }
         \\  }
@@ -224,13 +214,13 @@ pub fn fetch(agent: *Agent, args: FetchArgs) !void {
 }
 
 pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
-    const youtube_fields = @typeInfo(Info.Videos.Youtube).@"struct".fields;
-    const youtube_info = &agent.info.videos.youtube;
-    const youtube_stats = &agent.stats.videos.youtube;
+    const youtube_fields = @typeInfo(Info.Youtube).@"struct".fields;
+    const youtube_info = &agent.info.youtube;
+    const youtube_stats = &agent.stats.youtube;
 
     const Result = @typeInfo(@TypeOf(fetchYoutubeVideo)).@"fn".return_type.?;
     const func = struct {
-        fn func(res: *Result, a: *Agent, id: []const u8, l: *Stats.Videos.Youtube.List, ar: FetchArgs) void {
+        fn func(res: *Result, a: *Agent, id: []const u8, l: *Stats.Youtube.List, ar: FetchArgs) void {
             res.* = a.fetchYoutubeVideo(id, l, ar);
         }
     }.func;
@@ -253,7 +243,7 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
         try res;
 }
 
-fn fetchYoutubeVideo(agent: *Agent, video_id: []const u8, list: *Stats.Videos.Youtube.List, args: FetchArgs) !void {
+fn fetchYoutubeVideo(agent: *Agent, video_id: []const u8, list: *Stats.Youtube.List, args: FetchArgs) !void {
     const stats = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_id);
     try list.items.append(agent.arena.allocator(), .{
         .date = args.date,
