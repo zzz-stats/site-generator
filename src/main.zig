@@ -12,7 +12,7 @@ pub fn main(init: std.process.Init) !void {
     const youtube_api_key = init.environ_map.get("ZZZ_STATS_YOUTUBE_API_KEY") orelse return error.MissingKey;
 
     const date = blk: {
-        const date_process_result = try std.process.run(init.gpa, init.io, .{
+        const date_process_result = try std.process.run(init.arena.allocator(), init.io, .{
             .argv = &[_][]const u8{ "date", "-u", "+%Y-%m-%dT%H:%M:%SZ" },
         });
         const date_process_stdout = std.mem.trim(u8, date_process_result.stdout, "\n\r");
