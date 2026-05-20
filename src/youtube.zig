@@ -1,48 +1,29 @@
 const base = "https://youtube.googleapis.com/youtube/v3";
 
-pub const Video = struct {
-    pub const Statistics = struct {
-        views: u64,
-        likes: u64,
-        comments: u64,
-    };
+const VideoStatisticsResponse = struct {
+    items: []struct {
+        id: []const u8,
+        statistics: struct {
+            viewCount: u64,
+            likeCount: u64,
+            commentCount: u64,
+        },
+    },
 };
 
+/// Fetches statistics for given video IDs using the YouTube Data API v3.
 pub fn fetchVideoStatistics(
     client: *std.http.Client,
     gpa: std.mem.Allocator,
     key: []const u8,
-    video_id: []const u8,
-) !Video.Statistics {
-    var arena_allocator = std.heap.ArenaAllocator.init(gpa);
-    const arena = arena_allocator.allocator();
-    defer arena_allocator.deinit();
-
-    const endpoint = "videos";
-    const part = "statistics";
-
-    const url = try std.fmt.allocPrint(arena, "{s}/{s}?part={s}&id={s}&key={s}", .{ base, endpoint, part, video_id, key });
+    video_ids: []const u8,
+) !std.json.Parsed(VideoStatisticsResponse) {
+    const url = try std.fmt.allocPrint(gpa, "{s}/videos?part=statistics&id={s}&key={s}", .{ base, video_ids, key });
+    defer gpa.free(url);
 
     var response_writer = std.Io.Writer.Allocating.init(gpa);
     defer response_writer.deinit();
-
-    const response = try fetchAndParse(client, &response_writer, arena, url, struct {
-        items: []struct {
-            statistics: struct {
-                viewCount: u64,
-                likeCount: u64,
-                commentCount: u64,
-            },
-        },
-    });
-    if (response.items.len == 0)
-        return error.InvalidResponse;
-
-    return .{
-        .views = response.items[0].statistics.viewCount,
-        .likes = response.items[0].statistics.likeCount,
-        .comments = response.items[0].statistics.commentCount,
-    };
+    return fetchAndParse(client, gpa, &response_writer, url, VideoStatisticsResponse);
 }
 
 test fetchVideoStatistics {
@@ -51,11 +32,12 @@ test fetchVideoStatistics {
 
 fn fetchAndParse(
     client: *std.http.Client,
+    gpa: std.mem.Allocator,
     writer: *std.Io.Writer.Allocating,
-    arena: std.mem.Allocator,
     url: []const u8,
     comptime T: type,
-) !T {
+) !std.json.Parsed(T) {
+    std.log.debug("Fetching URL: {s}", .{url});
     const result = try client.fetch(.{
         .method = .GET,
         .location = .{ .url = url },
@@ -66,13 +48,19 @@ fn fetchAndParse(
         return error.HttpError;
 
     const response_str = writer.written();
-    const response = std.json.parseFromSliceLeaky(T, arena, response_str, .{
+    std.log.debug("Received response: {s}", .{response_str});
+
+    return std.json.parseFromSlice(T, gpa, response_str, .{
         .ignore_unknown_fields = true,
+        .allocate = .alloc_always,
     }) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.InvalidResponse,
     };
-    return response;
+}
+
+test fetchAndParse {
+    _ = &fetchAndParse;
 }
 
 const std = @import("std");

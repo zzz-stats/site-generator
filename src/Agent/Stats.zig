@@ -65,26 +65,27 @@ pub const Youtube = struct {
 
     pub const Video = struct {
         date: Date,
-        views: u64,
-        likes: u64,
-        comments: u64,
+        view_count: u64,
+        like_count: u64,
+        comment_count: u64,
     };
 
     pub const List = struct {
         items: std.MultiArrayList(Video) = .empty,
 
+        const Json = struct {
+            date: []const Date,
+            view_count: []const u64,
+            like_count: []const u64,
+            comment_count: []const u64,
+        };
+
         pub fn jsonStringify(list: List, stringify: *std.json.Stringify) !void {
-            const Json = struct {
-                date: []const Date,
-                views: []const u64,
-                likes: []const u64,
-                comments: []const u64,
-            };
             return stringify.write(Json{
                 .date = list.items.items(.date),
-                .views = list.items.items(.views),
-                .likes = list.items.items(.likes),
-                .comments = list.items.items(.comments),
+                .view_count = list.items.items(.view_count),
+                .like_count = list.items.items(.like_count),
+                .comment_count = list.items.items(.comment_count),
             });
         }
 
@@ -93,23 +94,17 @@ pub const Youtube = struct {
             source: anytype,
             options: std.json.ParseOptions,
         ) std.json.ParseError(@TypeOf(source.*))!List {
-            const Json = struct {
-                date: []const Date,
-                views: []const u64,
-                likes: []const u64,
-                comments: []const u64,
-            };
             const json = try std.json.innerParse(Json, allocator, source, options);
 
             var res = List{};
             errdefer res.items.deinit(allocator);
 
-            const len = @min(json.date.len, json.views.len, json.likes.len, json.comments.len);
+            const len = @min(json.date.len, json.view_count.len, json.like_count.len, json.comment_count.len);
             try res.items.resize(allocator, len);
             @memcpy(res.items.items(.date), json.date[0..len]);
-            @memcpy(res.items.items(.views), json.views[0..len]);
-            @memcpy(res.items.items(.likes), json.likes[0..len]);
-            @memcpy(res.items.items(.comments), json.comments[0..len]);
+            @memcpy(res.items.items(.view_count), json.view_count[0..len]);
+            @memcpy(res.items.items(.like_count), json.like_count[0..len]);
+            @memcpy(res.items.items(.comment_count), json.comment_count[0..len]);
 
             return res;
         }

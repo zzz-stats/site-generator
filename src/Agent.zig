@@ -173,13 +173,13 @@ test testReadAndWriteSame {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
         \\        ],
-        \\        "views": [
+        \\        "view_count": [
         \\          123
         \\        ],
-        \\        "likes": [
+        \\        "like_count": [
         \\          456
         \\        ],
-        \\        "comments": [
+        \\        "comment_count": [
         \\          789
         \\        ]
         \\      }
@@ -205,13 +205,13 @@ test testReadAndWriteSame {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
         \\        ],
-        \\        "views": [
+        \\        "view_count": [
         \\          123
         \\        ],
-        \\        "likes": [
+        \\        "like_count": [
         \\          456
         \\        ],
-        \\        "comments": [
+        \\        "comment_count": [
         \\          789
         \\        ]
         \\      }
@@ -221,13 +221,13 @@ test testReadAndWriteSame {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
         \\        ],
-        \\        "views": [
+        \\        "view_count": [
         \\          321
         \\        ],
-        \\        "likes": [
+        \\        "like_count": [
         \\          654
         \\        ],
-        \\        "comments": [
+        \\        "comment_count": [
         \\          987
         \\        ]
         \\      }
@@ -256,13 +256,13 @@ test testReadAndWriteSame {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
         \\        ],
-        \\        "views": [
+        \\        "view_count": [
         \\          123
         \\        ],
-        \\        "likes": [
+        \\        "like_count": [
         \\          456
         \\        ],
-        \\        "comments": [
+        \\        "comment_count": [
         \\          789
         \\        ]
         \\      }
@@ -272,13 +272,13 @@ test testReadAndWriteSame {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
         \\        ],
-        \\        "views": [
+        \\        "view_count": [
         \\          321
         \\        ],
-        \\        "likes": [
+        \\        "like_count": [
         \\          654
         \\        ],
-        \\        "comments": [
+        \\        "comment_count": [
         \\          987
         \\        ]
         \\      }
@@ -288,13 +288,13 @@ test testReadAndWriteSame {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
         \\        ],
-        \\        "views": [
+        \\        "view_count": [
         \\          231
         \\        ],
-        \\        "likes": [
+        \\        "like_count": [
         \\          564
         \\        ],
-        \\        "comments": [
+        \\        "comment_count": [
         \\          897
         \\        ]
         \\      }
@@ -405,11 +405,13 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
 
 fn fetchYoutubeVideo(agent: *Agent, video_id: []const u8, list: *Stats.Youtube.List, args: FetchArgs) !void {
     const stats = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_id);
+    defer stats.deinit();
+
     try list.items.append(agent.arena.allocator(), .{
         .date = args.date,
-        .views = stats.views,
-        .likes = stats.likes,
-        .comments = stats.comments,
+        .view_count = stats.value.items[0].statistics.viewCount,
+        .like_count = stats.value.items[0].statistics.likeCount,
+        .comment_count = stats.value.items[0].statistics.commentCount,
     });
 }
 
