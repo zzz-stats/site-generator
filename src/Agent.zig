@@ -359,6 +359,7 @@ pub fn fetch(agent: *Agent, args: FetchArgs) !void {
 }
 
 pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
+    const youtube_fields = @typeInfo(Info.Youtube).@"struct".fields;
     const info_youtube_fields = comptime blk: {
         var res: []const []const u8 = &.{};
         for (@typeInfo(Info).@"struct".fields) |info_field| {
@@ -371,48 +372,48 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
         break :blk res_copy;
     };
 
-    const Result = @typeInfo(@TypeOf(fetchYoutubeVideo)).@"fn".return_type.?;
-    const func = struct {
-        fn func(res: *Result, a: *Agent, id: []const u8, l: *Stats.Youtube.List, ar: FetchArgs) void {
-            res.* = a.fetchYoutubeVideo(id, l, ar);
-        }
-    }.func;
+    var video_ids = std.Io.Writer.Allocating.init(args.gpa);
+    defer video_ids.deinit();
 
-    const youtube_fields = @typeInfo(Info.Youtube).@"struct".fields;
-    var all_results: [info_youtube_fields.len][youtube_fields.len]Result = undefined;
-    var group = std.Io.Group.init;
-
-    inline for (info_youtube_fields, &all_results) |info_field, *youtube_results| {
+    var ids_count: usize = 0;
+    inline for (info_youtube_fields) |info_field| {
         const youtube_info = &@field(agent.info, info_field);
-        const youtube_stats = &@field(agent.stats, info_field);
 
-        inline for (youtube_fields, youtube_results) |field, *res| continue_blk: {
-            const video_id = @field(youtube_info, field.name) orelse {
-                res.* = {};
-                break :continue_blk;
-            };
-            const list = &@field(youtube_stats, field.name);
-            try group.concurrent(args.io, func, .{ res, agent, video_id, list, args });
+        inline for (youtube_fields) |field| continue_blk: {
+            const video_id = @field(youtube_info, field.name) orelse break :continue_blk;
+            try video_ids.writer.print("{s}{s}", .{ if (ids_count == 0) "" else ",", video_id });
+            ids_count += 1;
         }
     }
 
-    try group.await(args.io);
+    const response = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_ids.written());
+    defer response.deinit();
 
-    for (all_results) |youtube_results|
-        for (youtube_results) |res|
-            try res;
-}
+    if (response.value.items.len != ids_count)
+        return error.InvalidResponse;
 
-fn fetchYoutubeVideo(agent: *Agent, video_id: []const u8, list: *Stats.Youtube.List, args: FetchArgs) !void {
-    const stats = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_id);
-    defer stats.deinit();
+    var response_index: usize = 0;
+    inline for (info_youtube_fields) |info_field| {
+        const youtube_info = &@field(agent.info, info_field);
+        const youtube_stats = &@field(agent.stats, info_field);
 
-    try list.items.append(agent.arena.allocator(), .{
-        .date = args.date,
-        .view_count = stats.value.items[0].statistics.viewCount,
-        .like_count = stats.value.items[0].statistics.likeCount,
-        .comment_count = stats.value.items[0].statistics.commentCount,
-    });
+        inline for (youtube_fields) |field| continue_blk: {
+            const video_id = @field(youtube_info, field.name) orelse break :continue_blk;
+            const response_item = &response.value.items[response_index];
+            if (!std.mem.eql(u8, response_item.id, video_id))
+                return error.InvalidResponse;
+
+            const list = &@field(youtube_stats, field.name);
+            try list.items.append(agent.arena.allocator(), .{
+                .date = args.date,
+                .view_count = response_item.statistics.viewCount,
+                .like_count = response_item.statistics.likeCount,
+                .comment_count = response_item.statistics.commentCount,
+            });
+
+            response_index += 1;
+        }
+    }
 }
 
 const Agent = @This();
