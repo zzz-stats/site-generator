@@ -96,8 +96,7 @@ test testReadAndWriteSame {
         \\{
         \\  "info": {
         \\    "id": "test-agent",
-        \\    "name": "Test Agent",
-        \\    "youtube": {}
+        \\    "name": "Test Agent"
         \\  }
         \\}
     );
@@ -106,7 +105,7 @@ test testReadAndWriteSame {
         \\  "info": {
         \\    "id": "test-agent",
         \\    "name": "Test Agent",
-        \\    "youtube": {
+        \\    "youtube_cn": {
         \\      "ep": "aaaaaaaaaaa"
         \\    }
         \\  }
@@ -117,7 +116,38 @@ test testReadAndWriteSame {
         \\  "info": {
         \\    "id": "test-agent",
         \\    "name": "Test Agent",
-        \\    "youtube": {
+        \\    "youtube_cn": {
+        \\      "ep": "aaaaaaaaaaa"
+        \\    },
+        \\    "youtube_en": {
+        \\      "ep": "bbbbbbbbbbb"
+        \\    }
+        \\  }
+        \\}
+    );
+    try testReadAndWriteSame(
+        \\{
+        \\  "info": {
+        \\    "id": "test-agent",
+        \\    "name": "Test Agent",
+        \\    "youtube_cn": {
+        \\      "ep": "aaaaaaaaaaa"
+        \\    },
+        \\    "youtube_en": {
+        \\      "ep": "bbbbbbbbbbb"
+        \\    },
+        \\    "youtube_jp": {
+        \\      "ep": "ccccccccccc"
+        \\    }
+        \\  }
+        \\}
+    );
+    try testReadAndWriteSame(
+        \\{
+        \\  "info": {
+        \\    "id": "test-agent",
+        \\    "name": "Test Agent",
+        \\    "youtube_cn": {
         \\      "ep": "aaaaaaaaaaa",
         \\      "demo": "aaaaaaaaaaa",
         \\      "record": "aaaaaaaaaaa",
@@ -133,12 +163,12 @@ test testReadAndWriteSame {
         \\  "info": {
         \\    "id": "test-agent",
         \\    "name": "Test Agent",
-        \\    "youtube": {
+        \\    "youtube_cn": {
         \\      "ep": "aaaaaaaaaaa"
         \\    }
         \\  },
         \\  "stats": {
-        \\    "youtube": {
+        \\    "youtube_cn": {
         \\      "ep": {
         \\        "date": [
         \\          "2024-01-01T00:00:00Z"
@@ -151,6 +181,121 @@ test testReadAndWriteSame {
         \\        ],
         \\        "comments": [
         \\          789
+        \\        ]
+        \\      }
+        \\    }
+        \\  }
+        \\}
+    );
+    try testReadAndWriteSame(
+        \\{
+        \\  "info": {
+        \\    "id": "test-agent",
+        \\    "name": "Test Agent",
+        \\    "youtube_cn": {
+        \\      "ep": "aaaaaaaaaaa"
+        \\    },
+        \\    "youtube_en": {
+        \\      "ep": "bbbbbbbbbbb"
+        \\    }
+        \\  },
+        \\  "stats": {
+        \\    "youtube_cn": {
+        \\      "ep": {
+        \\        "date": [
+        \\          "2024-01-01T00:00:00Z"
+        \\        ],
+        \\        "views": [
+        \\          123
+        \\        ],
+        \\        "likes": [
+        \\          456
+        \\        ],
+        \\        "comments": [
+        \\          789
+        \\        ]
+        \\      }
+        \\    },
+        \\    "youtube_en": {
+        \\      "ep": {
+        \\        "date": [
+        \\          "2024-01-01T00:00:00Z"
+        \\        ],
+        \\        "views": [
+        \\          321
+        \\        ],
+        \\        "likes": [
+        \\          654
+        \\        ],
+        \\        "comments": [
+        \\          987
+        \\        ]
+        \\      }
+        \\    }
+        \\  }
+        \\}
+    );
+    try testReadAndWriteSame(
+        \\{
+        \\  "info": {
+        \\    "id": "test-agent",
+        \\    "name": "Test Agent",
+        \\    "youtube_cn": {
+        \\      "ep": "aaaaaaaaaaa"
+        \\    },
+        \\    "youtube_en": {
+        \\      "ep": "bbbbbbbbbbb"
+        \\    },
+        \\    "youtube_jp": {
+        \\      "ep": "ccccccccccc"
+        \\    }
+        \\  },
+        \\  "stats": {
+        \\    "youtube_cn": {
+        \\      "ep": {
+        \\        "date": [
+        \\          "2024-01-01T00:00:00Z"
+        \\        ],
+        \\        "views": [
+        \\          123
+        \\        ],
+        \\        "likes": [
+        \\          456
+        \\        ],
+        \\        "comments": [
+        \\          789
+        \\        ]
+        \\      }
+        \\    },
+        \\    "youtube_en": {
+        \\      "ep": {
+        \\        "date": [
+        \\          "2024-01-01T00:00:00Z"
+        \\        ],
+        \\        "views": [
+        \\          321
+        \\        ],
+        \\        "likes": [
+        \\          654
+        \\        ],
+        \\        "comments": [
+        \\          987
+        \\        ]
+        \\      }
+        \\    },
+        \\    "youtube_jp": {
+        \\      "ep": {
+        \\        "date": [
+        \\          "2024-01-01T00:00:00Z"
+        \\        ],
+        \\        "views": [
+        \\          231
+        \\        ],
+        \\        "likes": [
+        \\          564
+        \\        ],
+        \\        "comments": [
+        \\          897
         \\        ]
         \\      }
         \\    }
@@ -214,9 +359,17 @@ pub fn fetch(agent: *Agent, args: FetchArgs) !void {
 }
 
 pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
-    const youtube_fields = @typeInfo(Info.Youtube).@"struct".fields;
-    const youtube_info = &agent.info.youtube;
-    const youtube_stats = &agent.stats.youtube;
+    const info_youtube_fields = comptime blk: {
+        var res: []const []const u8 = &.{};
+        for (@typeInfo(Info).@"struct".fields) |info_field| {
+            if (!std.mem.startsWith(u8, info_field.name, "youtube_"))
+                continue;
+            res = res ++ [_][]const u8{info_field.name};
+        }
+
+        const res_copy = res[0..res.len].*;
+        break :blk res_copy;
+    };
 
     const Result = @typeInfo(@TypeOf(fetchYoutubeVideo)).@"fn".return_type.?;
     const func = struct {
@@ -225,22 +378,29 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
         }
     }.func;
 
-    var results: [youtube_fields.len]Result = undefined;
+    const youtube_fields = @typeInfo(Info.Youtube).@"struct".fields;
+    var all_results: [info_youtube_fields.len][youtube_fields.len]Result = undefined;
     var group = std.Io.Group.init;
 
-    inline for (youtube_fields, &results) |field, *res| continue_blk: {
-        const video_id = @field(youtube_info, field.name) orelse {
-            res.* = {};
-            break :continue_blk;
-        };
-        const list = &@field(youtube_stats, field.name);
-        try group.concurrent(args.io, func, .{ res, agent, video_id, list, args });
+    inline for (info_youtube_fields, &all_results) |info_field, *youtube_results| {
+        const youtube_info = &@field(agent.info, info_field);
+        const youtube_stats = &@field(agent.stats, info_field);
+
+        inline for (youtube_fields, youtube_results) |field, *res| continue_blk: {
+            const video_id = @field(youtube_info, field.name) orelse {
+                res.* = {};
+                break :continue_blk;
+            };
+            const list = &@field(youtube_stats, field.name);
+            try group.concurrent(args.io, func, .{ res, agent, video_id, list, args });
+        }
     }
 
     try group.await(args.io);
 
-    for (results) |res|
-        try res;
+    for (all_results) |youtube_results|
+        for (youtube_results) |res|
+            try res;
 }
 
 fn fetchYoutubeVideo(agent: *Agent, video_id: []const u8, list: *Stats.Youtube.List, args: FetchArgs) !void {

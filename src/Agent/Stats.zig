@@ -1,16 +1,22 @@
-youtube: Youtube = .{},
+youtube_cn: Youtube = .{},
+youtube_en: Youtube = .{},
+youtube_jp: Youtube = .{},
 
 pub fn jsonStringify(stats: Stats, stringify: *std.json.Stringify) !void {
     const Json = struct {
-        youtube: ?Youtube,
+        youtube_cn: ?Youtube,
+        youtube_en: ?Youtube,
+        youtube_jp: ?Youtube,
     };
     return stringify.write(Json{
-        .youtube = if (stats.youtube.hasData()) stats.youtube else null,
+        .youtube_cn = if (stats.youtube_cn.hasData()) stats.youtube_cn else null,
+        .youtube_en = if (stats.youtube_en.hasData()) stats.youtube_en else null,
+        .youtube_jp = if (stats.youtube_jp.hasData()) stats.youtube_jp else null,
     });
 }
 
 pub fn hasData(stats: Stats) bool {
-    return stats.youtube.hasData();
+    return stats.youtube_cn.hasData() or stats.youtube_en.hasData() or stats.youtube_jp.hasData();
 }
 
 pub const Youtube = struct {
