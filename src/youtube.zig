@@ -37,7 +37,6 @@ fn fetchAndParse(
     url: []const u8,
     comptime T: type,
 ) !std.json.Parsed(T) {
-    std.log.debug("Fetching URL: {s}", .{url});
     const result = try client.fetch(.{
         .method = .GET,
         .location = .{ .url = url },
@@ -48,8 +47,6 @@ fn fetchAndParse(
         return error.HttpError;
 
     const response_str = writer.written();
-    std.log.debug("Received response: {s}", .{response_str});
-
     return std.json.parseFromSlice(T, gpa, response_str, .{
         .ignore_unknown_fields = true,
         .allocate = .alloc_always,
