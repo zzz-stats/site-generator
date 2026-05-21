@@ -10,10 +10,10 @@ pub fn read(io: std.Io, gpa: std.mem.Allocator, dir: std.Io.Dir, filename: []con
     const content = try dir.readFileAlloc(io, filename, gpa, .unlimited);
     defer gpa.free(content);
 
-    return readFromString(gpa, content);
+    return readFromString(gpa, filename, content);
 }
 
-pub fn readFromString(gpa: std.mem.Allocator, str: []const u8) !Agent {
+pub fn readFromString(gpa: std.mem.Allocator, filename: []const u8, str: []const u8) !Agent {
     var arena_allocator = std.heap.ArenaAllocator.init(gpa);
     const arena = arena_allocator.allocator();
     errdefer arena_allocator.deinit();
@@ -22,7 +22,21 @@ pub fn readFromString(gpa: std.mem.Allocator, str: []const u8) !Agent {
         info: Info,
         stats: Stats = .{},
     };
-    var res = try std.json.parseFromSliceLeaky(Json, arena, str, .{ .allocate = .alloc_always });
+
+    var scanner = std.json.Scanner.initCompleteInput(gpa, str);
+    defer scanner.deinit();
+
+    var diagnostics = std.json.Scanner.Diagnostics{};
+    scanner.enableDiagnostics(&diagnostics);
+
+    var res = std.json.parseFromTokenSourceLeaky(Json, arena, &scanner, .{
+        .allocate = .alloc_always,
+    }) catch |err| {
+        std.log.err("Failed to parse {s}:{}:{}: {}", .{
+            filename, diagnostics.getLine(), diagnostics.getColumn(), @errorName(err),
+        });
+        return err;
+    };
     errdefer res.deinit();
 
     return .{
@@ -74,7 +88,7 @@ fn testReadAndWriteSame(json: []const u8) !void {
 
 fn testReadAndWriteDiff(input: []const u8, expected: []const u8) !void {
     const gpa = std.testing.allocator;
-    var agent1 = try readFromString(gpa, input);
+    var agent1 = try readFromString(gpa, "test.json", input);
     defer agent1.deinit();
 
     var writer = std.Io.Writer.Allocating.init(gpa);
@@ -83,7 +97,7 @@ fn testReadAndWriteDiff(input: []const u8, expected: []const u8) !void {
     try agent1.writeToWriter(&writer.writer);
     try std.testing.expectEqualStrings(expected, writer.written());
 
-    var agent2 = try readFromString(gpa, writer.written());
+    var agent2 = try readFromString(gpa, "test.json", writer.written());
     defer agent2.deinit();
 
     writer.clearRetainingCapacity();
