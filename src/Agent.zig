@@ -351,6 +351,7 @@ pub fn readFetchAndWriteEntireDirectory(dir: std.Io.Dir, args: FetchArgs) !void 
         }
     }.func;
 
+    // For all agent json files, call `readFetchAndWrite` concurrently
     var group = std.Io.Group.init;
     for (agents.items) |*agent|
         try group.concurrent(args.io, func, .{ &agent.result, dir, agent.filename, args });
@@ -386,6 +387,8 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
         break :blk res_copy;
     };
 
+    // Get all youtube ids into a single comma seperated string. Will be used to request video
+    // statistics for all videos of this agent.
     var video_ids = std.Io.Writer.Allocating.init(args.gpa);
     defer video_ids.deinit();
 
@@ -403,6 +406,7 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
     const response = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_ids.written());
     defer response.deinit();
 
+    // Response should have one item for every id requested
     if (response.value.items.len != ids_count)
         return error.InvalidResponse;
 
@@ -414,6 +418,8 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
         inline for (youtube_fields) |field| continue_blk: {
             const video_id = @field(youtube_info, field.name) orelse break :continue_blk;
             const response_item = &response.value.items[response_index];
+
+            // Response list should have the video ids in the same order as they where requested
             if (!std.mem.eql(u8, response_item.id, video_id))
                 return error.InvalidResponse;
 
