@@ -32,7 +32,7 @@ pub fn readFromString(gpa: std.mem.Allocator, filename: []const u8, str: []const
     var res = std.json.parseFromTokenSourceLeaky(Json, arena, &scanner, .{
         .allocate = .alloc_always,
     }) catch |err| {
-        std.log.err("Failed to parse {s}:{}:{}: {}", .{
+        std.log.err("Failed to parse {s}:{}:{}: {s}", .{
             filename, diagnostics.getLine(), diagnostics.getColumn(), @errorName(err),
         });
         return err;
@@ -65,21 +65,25 @@ pub fn writeToFile(agent: Agent, io: std.Io, file: std.Io.File) !void {
 }
 
 pub fn writeToWriter(agent: Agent, writer: *std.Io.Writer) !void {
-    const Json = struct {
-        info: Info,
-        stats: ?Stats,
-    };
     return std.json.Stringify.value(
-        Json{
-            .info = agent.info,
-            .stats = if (agent.stats.hasData()) agent.stats else null,
-        },
+        agent,
         .{
             .whitespace = .indent_2,
             .emit_null_optional_fields = false,
         },
         writer,
     );
+}
+
+pub fn jsonStringify(agent: Agent, stringify: *std.json.Stringify) !void {
+    const Json = struct {
+        info: Info,
+        stats: ?Stats,
+    };
+    return stringify.write(Json{
+        .info = agent.info,
+        .stats = if (agent.stats.hasData()) agent.stats else null,
+    });
 }
 
 fn testReadAndWriteSame(json: []const u8) !void {
