@@ -5,10 +5,6 @@ pub fn main(init: std.process.Init) !void {
     if (args.len < 2)
         return error.NotEnoughArguments;
 
-    const dir_path = args[1];
-    const dir = try std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true });
-    defer dir.close(io);
-
     const youtube_api_key = init.environ_map.get("ZZZ_STATS_YOUTUBE_API_KEY") orelse return error.MissingKey;
 
     const date = blk: {
@@ -25,13 +21,33 @@ pub fn main(init: std.process.Init) !void {
     };
     defer client.deinit();
 
-    try Agent.readFetchAndWriteEntireDirectory(dir, .{
-        .io = io,
-        .gpa = init.gpa,
-        .client = &client,
-        .date = date,
-        .youtube_api_key = youtube_api_key,
-    });
+    const path = args[1];
+    const cwd = std.Io.Dir.cwd();
+    if (cwd.openDir(io, path, .{ .iterate = false })) |dir| {
+        defer dir.close(io);
+
+        try Agent.readFetchAndWriteEntireDirectory(dir, .{
+            .io = io,
+            .gpa = init.gpa,
+            .client = &client,
+            .date = date,
+            .youtube_api_key = youtube_api_key,
+        });
+    } else |_| {
+        const dirname = std.fs.path.dirname(path) orelse ".";
+        const basename = std.fs.path.basename(path);
+
+        const dir = try cwd.openDir(io, dirname, .{});
+        defer dir.close(io);
+
+        try Agent.readFetchAndWrite(dir, basename, .{
+            .io = io,
+            .gpa = init.gpa,
+            .client = &client,
+            .date = date,
+            .youtube_api_key = youtube_api_key,
+        });
+    }
 }
 
 test main {
