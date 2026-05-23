@@ -16,7 +16,11 @@ pub fn jsonStringify(stats: Stats, stringify: *std.json.Stringify) !void {
 }
 
 pub fn hasData(stats: Stats) bool {
-    return stats.youtube_cn.hasData() or stats.youtube_en.hasData() or stats.youtube_jp.hasData();
+    inline for (@typeInfo(Stats).@"struct".fields) |field| {
+        if (@field(stats, field.name).hasData())
+            return true;
+    }
+    return false;
 }
 
 pub const Youtube = struct {
@@ -26,22 +30,20 @@ pub const Youtube = struct {
     teaser: List = .{},
     for_display_only: List = .{},
     exclusive_channel: List = .{},
+    plastic_wrapped_journal: List = .{},
 
     pub fn deinit(youtube: *Youtube, gpa: std.mem.Allocator) void {
-        youtube.ep.items.deinit(gpa);
-        youtube.demo.items.deinit(gpa);
-        youtube.record.items.deinit(gpa);
-        youtube.for_display_only.items.deinit(gpa);
-        youtube.exclusive_channel.items.deinit(gpa);
+        inline for (@typeInfo(Youtube).@"struct".fields) |field|
+            @field(youtube, field.name).deinit(gpa);
     }
 
     pub fn hasData(youtube: Youtube) bool {
-        return youtube.ep.items.len > 0 or
-            youtube.demo.items.len > 0 or
-            youtube.record.items.len > 0 or
-            youtube.teaser.items.len > 0 or
-            youtube.for_display_only.items.len > 0 or
-            youtube.exclusive_channel.items.len > 0;
+        inline for (@typeInfo(Youtube).@"struct".fields) |field| {
+            if (@field(youtube, field.name).items.len > 0)
+                return true;
+        }
+
+        return false;
     }
 
     pub fn jsonStringify(youtube: Youtube, stringify: *std.json.Stringify) !void {
@@ -52,6 +54,7 @@ pub const Youtube = struct {
             teaser: ?List,
             for_display_only: ?List,
             exclusive_channel: ?List,
+            plastic_wrapped_journal: ?List,
         };
         return stringify.write(Json{
             .ep = if (youtube.ep.items.len > 0) youtube.ep else null,
@@ -60,6 +63,7 @@ pub const Youtube = struct {
             .teaser = if (youtube.teaser.items.len > 0) youtube.teaser else null,
             .for_display_only = if (youtube.for_display_only.items.len > 0) youtube.for_display_only else null,
             .exclusive_channel = if (youtube.exclusive_channel.items.len > 0) youtube.exclusive_channel else null,
+            .plastic_wrapped_journal = if (youtube.plastic_wrapped_journal.items.len > 0) youtube.plastic_wrapped_journal else null,
         });
     }
 

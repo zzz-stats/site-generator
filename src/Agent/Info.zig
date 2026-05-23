@@ -28,14 +28,14 @@ pub const Youtube = struct {
     teaser: ?[]const u8 = null,
     for_display_only: ?[]const u8 = null,
     exclusive_channel: ?[]const u8 = null,
+    plastic_wrapped_journal: ?[]const u8 = null,
 
     pub fn hasData(youtube: Youtube) bool {
-        return youtube.ep != null or
-            youtube.demo != null or
-            youtube.record != null or
-            youtube.teaser != null or
-            youtube.for_display_only != null or
-            youtube.exclusive_channel != null;
+        inline for (@typeInfo(Youtube).@"struct".fields) |field| {
+            if (@field(youtube, field.name) != null)
+                return true;
+        }
+        return false;
     }
 };
 
