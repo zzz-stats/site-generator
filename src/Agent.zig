@@ -410,10 +410,6 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
     const response = try youtube.fetchVideoStatistics(args.client, args.gpa, args.youtube_api_key, video_ids.written());
     defer response.deinit();
 
-    // Response should have one item for every id requested
-    if (response.value.items.len != ids_count)
-        return error.InvalidResponse;
-
     var response_index: usize = 0;
     inline for (info_youtube_fields) |info_field| {
         const youtube_info = &@field(agent.info, info_field);
@@ -421,11 +417,16 @@ pub fn fetchYoutube(agent: *Agent, args: FetchArgs) !void {
 
         inline for (youtube_fields) |field| continue_blk: {
             const video_id = @field(youtube_info, field.name) orelse break :continue_blk;
-            const response_item = &response.value.items[response_index];
 
-            // Response list should have the video ids in the same order as they where requested
-            if (!std.mem.eql(u8, response_item.id, video_id))
+            const response_item = blk: {
+                for (response.value.items) |*item| {
+                    if (std.mem.eql(u8, item.id, video_id))
+                        break :blk item;
+                }
+
+                std.log.err("Failed to fetch '{s}.{s}.{s}'", .{ agent.info.id, info_field, field.name });
                 return error.InvalidResponse;
+            };
 
             const list = &@field(youtube_stats, field.name);
             try list.items.append(agent.arena.allocator(), .{
